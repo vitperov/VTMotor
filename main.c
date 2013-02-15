@@ -2,6 +2,7 @@
  * This file is part of VTMotor (I2C motor driver)
  *
  * Copyright 2012 Vitaly Perov <vitperov@gmail.com>
+ * Copyright 2013 Denis Morin <morind79@gmail.com>
  *
  * VTMotor is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,6 +19,7 @@
  */
 
 #include <avr/io.h>
+#include <util/delay.h>
 
 #include "motor.h"
 #include "external/SMBSlave.h"
@@ -28,7 +30,17 @@ inline void conf_TMR0()
   /* set clock source f_t0 = f_io/8 = 1 MHz */
   TCCR0 = _BV(CS01);
 
-  TIMSK |= _BV(TOIE0); /* Enable TMR0 interrupt */
+  enableTimer();
+}
+
+inline void enableTimer()
+{
+  TIMSK |= _BV(TOIE0);
+}
+
+inline void disableTimer()
+{
+  TIMSK &= ~_BV(TOIE0);
 }
 
 inline void configure()
@@ -46,6 +58,7 @@ inline void configure()
 int main(void)
 {
   configure();
+
   while (1);
   return 0;
 }

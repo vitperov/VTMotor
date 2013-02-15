@@ -2,6 +2,7 @@
  * This file is part of VTMotor (I2C motor driver)
  *
  * Copyright 2012 Vitaly Perov <vitperov@gmail.com>
+ * Copyright 2013 Denis Morin <morind79@gmail.com>
  *
  * VTMotor is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -46,10 +47,17 @@
 #define DRV_DIR_DDR     DDRC
 
 /* internal variables */
+
+/* Stepper info */
+static const uint8_t seqWaveDrive[4] = {0b1000, 0b0010, 0b0100, 0b0001};
+static const uint8_t seqFullStep[4] = {0b1010, 0b0110, 0b0101, 0b1001};
+
 static uint8_t dir1_is_forward, dir2_is_forward;
 static uint8_t drv_enabled;
-static uint8_t speed1, speed2;
+static uint8_t speed1, speed2, mType;
+static uint8_t sCmd, mSpeed, stepOk, was;
 static uint8_t pwm_cnt;
+static uint16_t numStep, stp_cnt;
 
 /********************
  * HELPER FUNCTIONS *
@@ -91,8 +99,8 @@ static inline void drv1_turn_off()
 {
   if (dir1_is_forward)
     DRV_PWM_PORT &= ~_BV(DRV1_PWM_PIN);
-    else
-  DRV_PWM_PORT |= _BV(DRV1_PWM_PIN);
+  else
+    DRV_PWM_PORT |= _BV(DRV1_PWM_PIN);
 }
 
 static inline void drv2_turn_on()
@@ -140,9 +148,24 @@ void conf_motors()
   speed1 = 0;
   speed2 = 0;
   pwm_cnt = 0;
+  mType = 0;
+  mSpeed = 100;
+  sCmd = 0;
+  numStep = 0;
+  stp_cnt = 0;
+  stepOk = 0;
+  was = 0;
 }
 
-void inline motors_pwm()
+uint8_t step_remaining()
+{
+  if (numStep>0)
+    return(1);
+  else
+    return(0);
+}
+
+void inline dc_motors_pwm()
 {
   if (!pwm_cnt)
   {
@@ -160,6 +183,21 @@ void inline motors_pwm()
   pwm_cnt++;
   if (pwm_cnt > PWM_CNT_MAX)
     pwm_cnt = 0;
+}
+
+void inline stepper_motor()
+{
+  if (stepOk == 1)
+    drv_StepForward();
+  else if (stepOk == 2)
+    drv_StepBackward();
+  stp_cnt++;
+  if (stp_cnt >= numStep) 
+  {
+    stepOk = 0;
+    numStep = 0;
+    stp_cnt = 0;
+  }
 }
 
 void drv_enable()
@@ -180,6 +218,11 @@ inline void drv_set_speed(uint8_t speed)
 {
   speed1 = speed;
   speed2 = speed;
+}
+
+inline void drv_MotorType(uint8_t type)
+{
+  mType = type;
 }
 
 inline void drv_set_left_speed(uint8_t speed)
@@ -229,26 +272,147 @@ void turn_right()
   drv1_forward();
 }
 
+inline void drv_TimerType(uint8_t type)
+{
+  disableTimer();
+  TCCR0 = 0;
+  TCCR0 |= type;
+  enableTimer();
+}
+
 ISR (TIMER0_OVF_vect)
 {
-  if (!pwm_cnt)
+  if(mType==0)
   {
-    if (speed1)
-      drv1_turn_on();
-    if (speed2)
-      drv2_turn_on();
-    }
+    dc_motors_pwm();
+  }
+  else
+  {
+    stepper_motor();
+  }
 
-  if (pwm_cnt == speed1)
-    drv1_turn_off();
-  if (pwm_cnt == speed2)
-    drv2_turn_off();
-
-  pwm_cnt++;
-  if (pwm_cnt > PWM_CNT_MAX)
-    pwm_cnt = 0;
-
-
-  TCNT0 -= TMR_RELOAD;
+  TCNT0 -= mSpeed;
 }
+
+// Stepper
+
+void setIn1()
+{
+  DRV_PWM_PORT |= _BV(DRV1_PWM_PIN);
+}
+
+void unsetIn1()
+{
+  DRV_PWM_PORT &= ~_BV(DRV1_PWM_PIN);
+}
+
+void setIn2()
+{
+  DRV_DIR_PORT |= _BV(DRV1_DIR_PIN);
+}
+
+void unsetIn2()
+{
+  DRV_DIR_PORT &= ~_BV(DRV1_DIR_PIN);
+}
+
+void setIn3()
+{
+  DRV_PWM_PORT |= _BV(DRV2_PWM_PIN);
+}
+
+void unsetIn3()
+{
+  DRV_PWM_PORT &= ~_BV(DRV2_PWM_PIN);
+}
+
+void setIn4()
+{
+  DRV_DIR_PORT |= _BV(DRV2_DIR_PIN);
+}
+
+void unsetIn4()
+{
+  DRV_DIR_PORT &= ~_BV(DRV2_DIR_PIN);
+}
+
+void stepperInit()
+{
+  // Everything set to 0
+  unsetIn1();
+  unsetIn2();
+  unsetIn3();
+  unsetIn4();
+}
+
+void waveDrive(uint8_t thisStep)
+{
+  if (seqWaveDrive[thisStep] & 0b1000) setIn1(); else unsetIn1();
+  if (seqWaveDrive[thisStep] & 0b0100) setIn2(); else unsetIn2();
+  if (seqWaveDrive[thisStep] & 0b0010) setIn3(); else unsetIn3();
+  if (seqWaveDrive[thisStep] & 0b0001) setIn4(); else unsetIn4();
+}
+
+void fullStep(uint8_t thisStep)
+{
+  if (seqFullStep[thisStep] & 0b1000) setIn1(); else unsetIn1();
+  if (seqFullStep[thisStep] & 0b0100) setIn2(); else unsetIn2();
+  if (seqFullStep[thisStep] & 0b0010) setIn3(); else unsetIn3();
+  if (seqFullStep[thisStep] & 0b0001) setIn4(); else unsetIn4();
+}
+
+void drv_SetNumStep(uint8_t num1, uint8_t num2)
+{
+  numStep = num1 * num2;
+}
+
+void drv_StepForward()
+{
+  if (mType>0)
+  {
+    if (was==2) sCmd++;
+    was=1;
+    // Step the motor one step
+    fullStep(sCmd % 4);
+    sCmd++;
+    if (sCmd>3) sCmd=0;
+  }
+}
+
+void drv_StepBackward()
+{
+  if (mType>0)
+  {
+    if (was==1) sCmd--;
+    was=2;
+    // Step the motor one step
+    fullStep(sCmd % 4);
+    sCmd--;
+    if (sCmd<0) sCmd=3;
+  }	
+}
+
+void drv_StepsForward()
+{
+  stepOk = 1;
+}
+
+void drv_StepsBackward()
+{
+  stepOk = 2;
+}
+
+void drv_StepSpeed(uint8_t speed)
+{
+  mSpeed = speed;
+}
+
+void drv_StepRelease()
+{
+  stepperInit();
+}
+
+
+
+
 
