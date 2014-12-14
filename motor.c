@@ -45,10 +45,10 @@
 #define DRV_DIR_DDR     DDRC
 
 /* internal variables */
-static uint8_t dir1_is_forward, dir2_is_forward;
-static uint8_t drv_enabled;
-static uint8_t speed1, speed2;
-static uint8_t pwm_cnt;
+static uint8_t m_dir1_is_forward, m_dir2_is_forward;
+static uint8_t m_drv_enabled;
+static uint8_t m_speed1, m_speed2;
+static uint8_t m_pwm_cnt;
 
 /********************
  * HELPER FUNCTIONS *
@@ -57,30 +57,30 @@ static uint8_t pwm_cnt;
 static void drv1_forward()
 {
   DRV_DIR_PORT &= ~_BV(DRV1_DIR_PIN);
-  dir1_is_forward = 1;
+  m_dir1_is_forward = 1;
 }
 
 static void drv1_back()
 {
   DRV_DIR_PORT |= _BV(DRV1_DIR_PIN);
-  dir1_is_forward = 0;
+  m_dir1_is_forward = 0;
 }
 
 static void drv2_forward()
 {
   DRV_DIR_PORT &= ~_BV(DRV2_DIR_PIN);
-  dir2_is_forward = 1;
+  m_dir2_is_forward = 1;
 }
 
 static void drv2_back()
 {
   DRV_DIR_PORT |= _BV(DRV2_DIR_PIN);
-  dir2_is_forward = 0;
+  m_dir2_is_forward = 0;
 }
 
 static inline void drv1_turn_on()
 {
-  if (dir1_is_forward)
+  if (m_dir1_is_forward)
     DRV_PWM_PORT |= _BV(DRV1_PWM_PIN);
   else
     DRV_PWM_PORT &= ~_BV(DRV1_PWM_PIN);
@@ -88,7 +88,7 @@ static inline void drv1_turn_on()
 
 static inline void drv1_turn_off()
 {
-  if (dir1_is_forward)
+  if (m_dir1_is_forward)
     DRV_PWM_PORT &= ~_BV(DRV1_PWM_PIN);
     else
   DRV_PWM_PORT |= _BV(DRV1_PWM_PIN);
@@ -96,7 +96,7 @@ static inline void drv1_turn_off()
 
 static inline void drv2_turn_on()
 {
-  if (dir2_is_forward)
+  if (m_dir2_is_forward)
     DRV_PWM_PORT |= _BV(DRV2_PWM_PIN);
   else
     DRV_PWM_PORT &= ~_BV(DRV2_PWM_PIN);
@@ -104,7 +104,7 @@ static inline void drv2_turn_on()
 
 static inline void drv2_turn_off()
 {
-  if (dir2_is_forward)
+  if (m_dir2_is_forward)
     DRV_PWM_PORT &= ~_BV(DRV2_PWM_PIN);
   else
     DRV_PWM_PORT |= _BV(DRV2_PWM_PIN);
@@ -130,22 +130,22 @@ static void conf_motor_pins()
 
 void inline motors_pwm()
 {
-  if (!pwm_cnt)
+  if (!m_pwm_cnt)
   {
-    if (speed1)
+    if (m_speed1)
       drv1_turn_on();
-    if (speed2)
+    if (m_speed2)
       drv2_turn_on();
   }
 
-  if (pwm_cnt == speed1)
+  if (m_pwm_cnt == m_speed1)
     drv1_turn_off();
-  if (pwm_cnt == speed2)
+  if (m_pwm_cnt == m_speed2)
     drv2_turn_off();
 
-  pwm_cnt++;
-  if (pwm_cnt > PWM_CNT_MAX)
-    pwm_cnt = 0;
+  m_pwm_cnt++;
+  if (m_pwm_cnt > PWM_CNT_MAX)
+    m_pwm_cnt = 0;
 }
 
 
@@ -156,40 +156,30 @@ void inline motors_pwm()
 void conf_motors()
 {
   conf_motor_pins();
-  speed1 = 0;
-  speed2 = 0;
-  pwm_cnt = 0;
+  m_speed1 = 0;
+  m_speed2 = 0;
+  m_pwm_cnt = 0;
 }
 
 void drv_enable()
 {
   DRV_EN_PORT |= _BV(DRV_EN_PIN1);
   DRV_EN_PORT |= _BV(DRV_EN_PIN2);
-  drv_enabled = 1;
+  m_drv_enabled = 1;
 }
 
 void drv_disable()
 {
   DRV_EN_PORT &= ~_BV(DRV_EN_PIN1);
   DRV_EN_PORT &= ~_BV(DRV_EN_PIN2);
-  drv_enabled = 0;
+  m_drv_enabled = 0;
 }
 
 inline void drv_set_speed(uint8_t left, uint8_t right)
 {
-  speed1 = left;
-  speed2 = right;
+  m_speed1 = left;
+  m_speed2 = right;
 }
-
-/*inline void drv_set_left_speed(uint8_t speed)
-{
-  speed1 = speed;
-}
-
-inline void drv_set_right_speed(uint8_t speed)
-{
-  speed2 = speed;
-}*/
 
 inline void drv_set_direction(uint8_t left, uint8_t right)
 {
