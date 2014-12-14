@@ -1,7 +1,7 @@
 /*
  * This file is part of VTMotor (I2C motor driver)
  *
- * Copyright 2012 Vitaly Perov <vitperov@gmail.com>
+ * Copyright 2012-2014 Vitaly Perov <vitperov@gmail.com>
  *
  * VTMotor is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -25,15 +25,8 @@ void inline motors_pwm();
 
 void drv_enable();
 void drv_disable();
-void go_forward();
-void go_back();
-void turn_left();
-void turn_right();
 
 inline void drv_set_direction(uint8_t left, uint8_t right);
-
-inline void drv_set_speed(uint8_t speed);
-inline void drv_set_left_speed(uint8_t speed);
-inline void drv_set_right_speed(uint8_t speed);
+inline void drv_set_speed    (uint8_t left, uint8_t right);
 
 #endif

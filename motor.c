@@ -1,7 +1,7 @@
 /*
  * This file is part of VTMotor (I2C motor driver)
  *
- * Copyright 2012 Vitaly Perov <vitperov@gmail.com>
+ * Copyright 2012-2014 Vitaly Perov <vitperov@gmail.com>
  *
  * VTMotor is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -25,10 +25,9 @@
 
 /* Settings */
 #define TMR_RELOAD      50 /* PWM frequency = 200 Hz */
-
-/* PINS */
 #define PWM_CNT_MAX     100
 
+/* PINS */
 #define DRV_EN_PIN1     PB1
 #define DRV_EN_PIN2     PB2
 
@@ -129,19 +128,6 @@ static void conf_motor_pins()
   drv_disable();
 }
 
-
-/********************
- * PUBLIC FUNCTIONS *
- ********************/
-
-void conf_motors()
-{
-  conf_motor_pins();
-  speed1 = 0;
-  speed2 = 0;
-  pwm_cnt = 0;
-}
-
 void inline motors_pwm()
 {
   if (!pwm_cnt)
@@ -162,6 +148,19 @@ void inline motors_pwm()
     pwm_cnt = 0;
 }
 
+
+/********************
+ * PUBLIC FUNCTIONS *
+ ********************/
+
+void conf_motors()
+{
+  conf_motor_pins();
+  speed1 = 0;
+  speed2 = 0;
+  pwm_cnt = 0;
+}
+
 void drv_enable()
 {
   DRV_EN_PORT |= _BV(DRV_EN_PIN1);
@@ -176,13 +175,13 @@ void drv_disable()
   drv_enabled = 0;
 }
 
-inline void drv_set_speed(uint8_t speed)
+inline void drv_set_speed(uint8_t left, uint8_t right)
 {
-  speed1 = speed;
-  speed2 = speed;
+  speed1 = left;
+  speed2 = right;
 }
 
-inline void drv_set_left_speed(uint8_t speed)
+/*inline void drv_set_left_speed(uint8_t speed)
 {
   speed1 = speed;
 }
@@ -190,7 +189,7 @@ inline void drv_set_left_speed(uint8_t speed)
 inline void drv_set_right_speed(uint8_t speed)
 {
   speed2 = speed;
-}
+}*/
 
 inline void drv_set_direction(uint8_t left, uint8_t right)
 {
@@ -205,50 +204,9 @@ inline void drv_set_direction(uint8_t left, uint8_t right)
     drv2_back();
 }
 
-void go_forward()
-{
-  drv1_forward();
-  drv2_forward();
-}
-
-void go_back()
-{
-  drv1_back();
-  drv2_back();
-}
-
-void turn_left()
-{
-  drv1_back();
-  drv2_forward();
-}
-
-void turn_right()
-{
-  drv2_back();
-  drv1_forward();
-}
-
 ISR (TIMER0_OVF_vect)
 {
-  if (!pwm_cnt)
-  {
-    if (speed1)
-      drv1_turn_on();
-    if (speed2)
-      drv2_turn_on();
-    }
-
-  if (pwm_cnt == speed1)
-    drv1_turn_off();
-  if (pwm_cnt == speed2)
-    drv2_turn_off();
-
-  pwm_cnt++;
-  if (pwm_cnt > PWM_CNT_MAX)
-    pwm_cnt = 0;
-
+  motors_pwm();
 
   TCNT0 -= TMR_RELOAD;
 }
-

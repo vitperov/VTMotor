@@ -113,8 +113,7 @@ static inline void SetSpeed(SMBData *smb)
     return;
   }
 
-  drv_set_left_speed(smb->rxBuffer[1]);
-  drv_set_right_speed(smb->rxBuffer[2]);
+  drv_set_speed(smb->rxBuffer[1], smb->rxBuffer[2]);
 
   smb->state = SMB_STATE_IDLE;
 }
